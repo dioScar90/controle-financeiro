@@ -28,35 +28,41 @@ const removeTransaction = id => {
     init();
 }
 
-const addTransactionIntoDOM = transaction => {
-    const operator = transaction.amount < 0 ? '-' : '+';
-    const CssClass = transaction.amount < 0 ? "minus" : "plus";
-    const amountWithoutOperator = Math.abs(transaction.amount);
+const addTransactionIntoDOM = ({ amount, name, id }) => {
+    const operator = amount < 0 ? '-' : '+';
+    const CssClass = amount < 0 ? "minus" : "plus";
+    const amountWithoutOperator = Math.abs(amount);
     const li = document.createElement("li");
 
     li.classList.add(CssClass);
     li.innerHTML = `
-        ${transaction.name}
+        ${name}
         <span>${operator} R$ ${amountWithoutOperator}</span>
-        <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>`;
+        <button class="delete-btn" onclick="removeTransaction(${id})">x</button>
+    `;
 
     transactionUl.append(li);
 }
 
+const getTotal = transactionsAmount => transactionsAmount
+    .reduce((accumulator, transaction) => accumulator + transaction, 0)
+    .toFixed(2);
+
+const getIncome = transactionsAmount => transactionsAmount
+    .filter(value => value > 0)
+    .reduce((accumulator, value) => accumulator + value, 0)
+    .toFixed(2);
+
+const getExpenses = transactionsAmount => Math.abs(transactionsAmount
+    .filter(value => value < 0)
+    .reduce((accumulator, value) => accumulator + value, 0))
+    .toFixed(2);
+
 const updateBalanceValues = () => {
-    const transactionsAmount  = transactions
-        .map(transaction => transaction.amount);
-    const total = transactionsAmount
-        .reduce((acc, trans) => acc + trans, 0)
-        .toFixed(2);
-    const income = transactionsAmount
-        .filter(value => value > 0)
-        .reduce((acc, val) => acc + val, 0)
-        .toFixed(2);
-    const expense = Math.abs(transactionsAmount
-        .filter(value => value < 0)
-        .reduce((acc, val) => acc + val, 0))
-        .toFixed(2);
+    const transactionsAmount  = transactions.map(({ amount }) => amount);
+    const total = getTotal(transactionsAmount);
+    const income = getIncome(transactionsAmount);
+    const expense = getExpenses(transactionsAmount);
     
     balanceDisplay.textContent = `R$ ${total}`;
     incomeDisplay.textContent = `R$ ${income}`;
@@ -78,17 +84,7 @@ const updateLocalStorage = () => {
 
 const generateId = () => Math.round(Math.random() * 1000);
 
-form.addEventListener("submit", e => {
-    e.preventDefault();
-
-    const transactionName = inputTransactionName.value.trim();
-    const transactionAmount = inputTransactionAmount.value.trim();
-
-    if (transactionName === '' || transactionAmount === '') {
-        alert("Por favor, preencha tanto o nome quanto o valor da transação.");
-        return;
-    }
-
+const addToTransactionArray = (transactionName, transactionAmount) => {
     const transaction = {
         id: generateId(),
         name: transactionName,
@@ -96,9 +92,29 @@ form.addEventListener("submit", e => {
     };
 
     transactions.push(transaction);
-    init();
-    updateLocalStorage();
+}
 
+const clearInputs = () => {
     inputTransactionName.value = '';
     inputTransactionAmount.value = '';
-})
+}
+
+const handleFormSubmit = e => {
+    e.preventDefault();
+
+    const transactionName = inputTransactionName.value.trim();
+    const transactionAmount = inputTransactionAmount.value.trim();
+    const isSomeInputEmpty = transactionName === '' || transactionAmount === '';
+
+    if (isSomeInputEmpty) {
+        alert("Por favor, preencha tanto o nome quanto o valor da transação.");
+        return;
+    }
+
+    addToTransactionArray(transactionName, transactionAmount);
+    init();
+    updateLocalStorage();
+    clearInputs();
+}
+
+form.addEventListener("submit", handleFormSubmit);
